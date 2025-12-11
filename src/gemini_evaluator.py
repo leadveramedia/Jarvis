@@ -22,7 +22,8 @@ class GeminiEvaluator:
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment")
 
-        genai.configure(api_key=api_key)
+        # Strip whitespace/newlines that can cause gRPC header errors
+        genai.configure(api_key=api_key.strip())
         self.model = genai.GenerativeModel('gemini-2.0-flash')
 
     def evaluate_email(self, subject, body, sender):

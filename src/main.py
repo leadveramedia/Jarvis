@@ -53,7 +53,7 @@ def main():
 
     # Fetch unread emails
     print("\nFetching unread emails...")
-    emails = gmail.get_unread_emails(max_results=20)
+    emails = gmail.get_unread_emails(max_results=10)
 
     if not emails:
         print("No unread emails found.")

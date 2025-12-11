@@ -9,10 +9,30 @@ Main orchestrator that:
 4. Marks processed emails as read
 """
 
+import re
 import sys
 from gmail_client import GmailClient
 from gemini_evaluator import GeminiEvaluator
 from asana_client import AsanaClient
+
+
+def has_unsubscribe_link(body):
+    """Check if email body contains unsubscribe-type links (marketing emails)."""
+    if not body:
+        return False
+    body_lower = body.lower()
+    unsubscribe_patterns = [
+        'unsubscribe',
+        'opt-out',
+        'opt out',
+        'remove me',
+        'manage preferences',
+        'email preferences',
+        'subscription preferences',
+        'click here to stop',
+        'no longer wish to receive',
+    ]
+    return any(pattern in body_lower for pattern in unsubscribe_patterns)
 
 
 def main():
@@ -51,21 +71,38 @@ def main():
         print(f"From: {email['sender']}")
         print(f"Subject: {email['subject'][:60]}{'...' if len(email['subject']) > 60 else ''}")
 
+        # Check for unsubscribe links (marketing emails)
+        email_content = email['body'] or email['snippet']
+        if has_unsubscribe_link(email_content):
+            print("  -> Marketing email (has unsubscribe link), skipping.")
+            emails_skipped += 1
+            gmail.mark_as_read(email['id'])
+            print("  -> Marked as read.")
+            continue
+
         # Evaluate with Gemini
         print("Evaluating with Gemini...")
         evaluation = gemini.evaluate_email(
             subject=email['subject'],
-            body=email['body'] or email['snippet'],
+            body=email_content,
             sender=email['sender']
         )
 
         if evaluation.get('is_actionable'):
             print(f"  -> ACTIONABLE: Creating task for {evaluation['assignee']}")
 
-            # Create Asana task
+            # Create Asana task with sender and date
+            task_notes = f"""From: {email['sender']}
+Date: {email.get('date', 'Unknown')}
+
+{evaluation['task_notes']}
+
+---
+Original subject: {email['subject']}"""
+
             result = asana.create_task(
                 name=evaluation['task_name'],
-                notes=f"From: {email['sender']}\n\n{evaluation['task_notes']}\n\n---\nOriginal subject: {email['subject']}",
+                notes=task_notes,
                 assignee_gid=evaluation['assignee_gid']
             )
 

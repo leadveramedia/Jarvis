@@ -76,11 +76,14 @@ class GmailClient:
             # Extract headers
             subject = ''
             sender = ''
+            date = ''
             for header in headers:
                 if header['name'].lower() == 'subject':
                     subject = header['value']
                 elif header['name'].lower() == 'from':
                     sender = header['value']
+                elif header['name'].lower() == 'date':
+                    date = header['value']
 
             # Extract body
             body = self._extract_body(msg['payload'])
@@ -89,6 +92,7 @@ class GmailClient:
                 'id': msg_id,
                 'subject': subject,
                 'sender': sender,
+                'date': date,
                 'body': body,
                 'snippet': msg.get('snippet', '')
             }

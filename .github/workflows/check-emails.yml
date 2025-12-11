@@ -2,8 +2,8 @@ name: Check Emails and Create Tasks
 
 on:
   schedule:
-    # Run every hour at minute 0
-    - cron: '0 * * * *'
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
   # Allow manual trigger for testing
   workflow_dispatch:
 
@@ -25,8 +25,8 @@ jobs:
 
       - name: Create credentials files from secrets
         run: |
-          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > credentials.json
-          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > token.json
+          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > src/credentials.json
+          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > src/token.json
 
       - name: Run email checker
         env:
@@ -39,4 +39,4 @@ jobs:
       - name: Cleanup credentials
         if: always()
         run: |
-          rm -f credentials.json token.json
+          rm -f src/credentials.json src/token.json

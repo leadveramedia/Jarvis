@@ -20,7 +20,8 @@ class AsanaClient:
 
         # Configure Asana client (v5 API)
         configuration = asana.Configuration()
-        configuration.access_token = self.access_token
+        # Strip whitespace/newlines that can cause header errors
+        configuration.access_token = self.access_token.strip()
         self.api_client = asana.ApiClient(configuration)
         self.tasks_api = asana.TasksApi(self.api_client)
 

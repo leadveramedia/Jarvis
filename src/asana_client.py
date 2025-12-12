@@ -25,7 +25,7 @@ class AsanaClient:
         self.api_client = asana.ApiClient(configuration)
         self.tasks_api = asana.TasksApi(self.api_client)
 
-    def create_task(self, name, notes, assignee_gid=None):
+    def create_task(self, name, notes, assignee_gid=None, follower_gids=None):
         """
         Create a new task in Asana.
 
@@ -33,6 +33,7 @@ class AsanaClient:
             name: Task title
             notes: Task description/notes
             assignee_gid: Asana user GID to assign the task to
+            follower_gids: List of Asana user GIDs to add as followers
 
         Returns:
             dict with task info including 'gid' and 'permalink_url'
@@ -45,6 +46,9 @@ class AsanaClient:
 
         if assignee_gid:
             task_data['assignee'] = assignee_gid
+
+        if follower_gids:
+            task_data['followers'] = follower_gids
 
         try:
             body = {"data": task_data}

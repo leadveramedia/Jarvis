@@ -89,9 +89,9 @@ def main():
             print("  -> Marked as read.")
             continue
 
-        # Check for priority senders - create tasks for all team members
+        # Check for priority senders - create one task with all team members as followers
         if is_priority_sender(email['sender']):
-            print("  -> PRIORITY SENDER: Creating tasks for all team members")
+            print("  -> PRIORITY SENDER: Creating task for all team members")
             task_notes = f"""From: {email['sender']}
 Date: {email.get('date', 'Unknown')}
 
@@ -100,17 +100,17 @@ Priority email from businessanywhere.io - please review and take action as neede
 ---
 Original subject: {email['subject']}"""
 
-            for member_name, member_gid in TEAM_MEMBERS.items():
-                result = asana.create_task(
-                    name=f"[Priority] {email['subject'][:50]}",
-                    notes=task_notes,
-                    assignee_gid=member_gid
-                )
-                if result['success']:
-                    print(f"  -> Task created for {member_name}")
-                    tasks_created += 1
-                else:
-                    print(f"  -> ERROR creating task for {member_name}: {result.get('error')}")
+            all_member_gids = list(TEAM_MEMBERS.values())
+            result = asana.create_task(
+                name=f"[Priority] {email['subject'][:50]}",
+                notes=task_notes,
+                follower_gids=all_member_gids
+            )
+            if result['success']:
+                print(f"  -> Task created with all team members as followers")
+                tasks_created += 1
+            else:
+                print(f"  -> ERROR creating task: {result.get('error')}")
         else:
             # Evaluate with Gemini
             print("Evaluating with Gemini...")

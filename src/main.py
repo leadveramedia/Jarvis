@@ -12,8 +12,17 @@ Main orchestrator that:
 import re
 import sys
 from gmail_client import GmailClient
-from gemini_evaluator import GeminiEvaluator
+from gemini_evaluator import GeminiEvaluator, TEAM_MEMBERS
 from asana_client import AsanaClient
+
+# Priority domains - always create tasks for all team members
+PRIORITY_DOMAINS = ['businessanywhere.io']
+
+
+def is_priority_sender(sender):
+    """Check if email is from a priority domain."""
+    sender_lower = sender.lower()
+    return any(domain in sender_lower for domain in PRIORITY_DOMAINS)
 
 
 def has_unsubscribe_link(body):
@@ -80,19 +89,42 @@ def main():
             print("  -> Marked as read.")
             continue
 
-        # Evaluate with Gemini
-        print("Evaluating with Gemini...")
-        evaluation = gemini.evaluate_email(
-            subject=email['subject'],
-            body=email_content,
-            sender=email['sender']
-        )
-
-        if evaluation.get('is_actionable'):
-            print(f"  -> ACTIONABLE: Creating task for {evaluation['assignee']}")
-
-            # Create Asana task with sender and date
+        # Check for priority senders - create tasks for all team members
+        if is_priority_sender(email['sender']):
+            print("  -> PRIORITY SENDER: Creating tasks for all team members")
             task_notes = f"""From: {email['sender']}
+Date: {email.get('date', 'Unknown')}
+
+Priority email from businessanywhere.io - please review and take action as needed.
+
+---
+Original subject: {email['subject']}"""
+
+            for member_name, member_gid in TEAM_MEMBERS.items():
+                result = asana.create_task(
+                    name=f"[Priority] {email['subject'][:50]}",
+                    notes=task_notes,
+                    assignee_gid=member_gid
+                )
+                if result['success']:
+                    print(f"  -> Task created for {member_name}")
+                    tasks_created += 1
+                else:
+                    print(f"  -> ERROR creating task for {member_name}: {result.get('error')}")
+        else:
+            # Evaluate with Gemini
+            print("Evaluating with Gemini...")
+            evaluation = gemini.evaluate_email(
+                subject=email['subject'],
+                body=email_content,
+                sender=email['sender']
+            )
+
+            if evaluation.get('is_actionable'):
+                print(f"  -> ACTIONABLE: Creating task for {evaluation['assignee']}")
+
+                # Create Asana task with sender and date
+                task_notes = f"""From: {email['sender']}
 Date: {email.get('date', 'Unknown')}
 
 {evaluation['task_notes']}
@@ -100,23 +132,23 @@ Date: {email.get('date', 'Unknown')}
 ---
 Original subject: {email['subject']}"""
 
-            result = asana.create_task(
-                name=evaluation['task_name'],
-                notes=task_notes,
-                assignee_gid=evaluation['assignee_gid']
-            )
+                result = asana.create_task(
+                    name=evaluation['task_name'],
+                    notes=task_notes,
+                    assignee_gid=evaluation['assignee_gid']
+                )
 
-            if result['success']:
-                print(f"  -> Task created: {result['name']}")
-                print(f"  -> Assigned to: {evaluation['assignee']}")
-                if result.get('permalink_url'):
-                    print(f"  -> URL: {result['permalink_url']}")
-                tasks_created += 1
+                if result['success']:
+                    print(f"  -> Task created: {result['name']}")
+                    print(f"  -> Assigned to: {evaluation['assignee']}")
+                    if result.get('permalink_url'):
+                        print(f"  -> URL: {result['permalink_url']}")
+                    tasks_created += 1
+                else:
+                    print(f"  -> ERROR creating task: {result.get('error')}")
             else:
-                print(f"  -> ERROR creating task: {result.get('error')}")
-        else:
-            print("  -> Not actionable, skipping.")
-            emails_skipped += 1
+                print("  -> Not actionable, skipping.")
+                emails_skipped += 1
 
         # Mark email as read
         if gmail.mark_as_read(email['id']):

@@ -24,7 +24,7 @@ class GeminiEvaluator:
 
         # Strip whitespace/newlines that can cause gRPC header errors
         genai.configure(api_key=api_key.strip())
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.model = genai.GenerativeModel('gemini-3-flash-preview')
 
     def evaluate_email(self, subject, body, sender):
         """
